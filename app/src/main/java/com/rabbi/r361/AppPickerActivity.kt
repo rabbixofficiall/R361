@@ -1,7 +1,8 @@
 package com.rabbi.r361
 
-import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.ArrayAdapter
 import android.widget.ListView
@@ -24,20 +25,22 @@ class AppPickerActivity : AppCompatActivity() {
         listView = findViewById(R.id.listApps)
 
         val pm = packageManager
-        val intent = Intent(Intent.ACTION_MAIN, null).apply {
-            addCategory(Intent.CATEGORY_LAUNCHER)
+
+        val installedApps = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getInstalledApplications(0)
         }
 
-        val apps = pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
-            .sortedBy { it.loadLabel(pm).toString().lowercase() }
+        val sortedApps = installedApps
+            .filter { it.packageName != packageName }
+            .sortedBy { pm.getApplicationLabel(it).toString().lowercase() }
 
-        for (app in apps) {
-            val appName = app.loadLabel(pm).toString()
-            val pkg = app.activityInfo.packageName
-            if (pkg != packageName) {
-                appNames.add(appName)
-                appPackages.add(pkg)
-            }
+        for (app in sortedApps) {
+            val label = pm.getApplicationLabel(app).toString()
+            appNames.add(label)
+            appPackages.add(app.packageName)
         }
 
         listView.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, appNames)
