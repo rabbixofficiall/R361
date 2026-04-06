@@ -15,6 +15,7 @@ class AutoTapAccessibilityService : AccessibilityService() {
 
     private var isRunning = false
     private var isTargetActive = false
+    private var currentPackage: String? = null
     private var remainingClicks = 0
 
     private val loop = object : Runnable {
@@ -39,11 +40,18 @@ class AutoTapAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         prefs = PrefsManager(this)
+        isRunning = false
+        isTargetActive = false
+        currentPackage = null
+        handler.removeCallbacks(loop)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val pkg = event?.packageName?.toString() ?: return
-        isTargetActive = pkg == prefs.getSelectedPackage()
+        currentPackage = pkg
+
+        val selected = prefs.getSelectedPackage()
+        isTargetActive = !selected.isNullOrBlank() && pkg == selected
 
         if (!isTargetActive && isRunning) {
             stopLoop()
@@ -55,16 +63,13 @@ class AutoTapAccessibilityService : AccessibilityService() {
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP &&
-            event.action == KeyEvent.ACTION_DOWN &&
-            event.repeatCount == 0
-        ) {
-            if (isTargetActive) {
-                if (isRunning) {
-                    stopLoop()
-                } else {
-                    startLoop()
-                }
+        if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount != 0) {
+            return false
+        }
+
+        if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+            if (isTargetActive && prefs.hasPoint()) {
+                if (isRunning) stopLoop() else startLoop()
                 return true
             }
         }
