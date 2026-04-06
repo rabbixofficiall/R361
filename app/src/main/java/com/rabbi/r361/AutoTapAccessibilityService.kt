@@ -10,39 +10,94 @@ import android.view.accessibility.AccessibilityEvent
 
 class AutoTapAccessibilityService : AccessibilityService() {
 
-    var running = false
-    val handler = Handler(Looper.getMainLooper())
+    private lateinit var prefs: PrefsManager
+    private val handler = Handler(Looper.getMainLooper())
 
-    val loop = object:Runnable{
-        override fun run(){
-            if(!running) return
+    private var isRunning = false
+    private var isTargetActive = false
+    private var remainingClicks = 0
+
+    private val loop = object : Runnable {
+        override fun run() {
+            if (!isRunning || !isTargetActive) return
+
             tap()
-            handler.postDelayed(this,50)
+
+            val configuredCount = prefs.getClickCount()
+            if (configuredCount > 0) {
+                remainingClicks--
+                if (remainingClicks <= 0) {
+                    stopLoop()
+                    return
+                }
+            }
+
+            handler.postDelayed(this, prefs.getSpeedMs().toLong())
         }
     }
 
-    override fun onAccessibilityEvent(e: AccessibilityEvent?) {}
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        prefs = PrefsManager(this)
+    }
 
-    override fun onInterrupt(){}
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        val pkg = event?.packageName?.toString() ?: return
+        isTargetActive = pkg == prefs.getSelectedPackage()
 
-    override fun onKeyEvent(e: KeyEvent): Boolean {
-        if(e.keyCode==KeyEvent.KEYCODE_VOLUME_UP && e.action==KeyEvent.ACTION_DOWN){
-            running=!running
-            if(running) handler.post(loop)
-            else handler.removeCallbacks(loop)
-            return true
+        if (!isTargetActive && isRunning) {
+            stopLoop()
         }
+    }
+
+    override fun onInterrupt() {
+        stopLoop()
+    }
+
+    override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP &&
+            event.action == KeyEvent.ACTION_DOWN &&
+            event.repeatCount == 0
+        ) {
+            if (isTargetActive) {
+                if (isRunning) {
+                    stopLoop()
+                } else {
+                    startLoop()
+                }
+                return true
+            }
+        }
+
         return false
     }
 
-    fun tap(){
-        val p = Path()
-        p.moveTo(500f,1000f)
+    private fun startLoop() {
+        if (!prefs.hasPoint()) return
 
-        val g = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(p,0,50))
+        remainingClicks = prefs.getClickCount()
+        isRunning = true
+        handler.removeCallbacks(loop)
+        handler.post(loop)
+    }
+
+    private fun stopLoop() {
+        isRunning = false
+        handler.removeCallbacks(loop)
+    }
+
+    private fun tap() {
+        val dm = resources.displayMetrics
+        val x = prefs.getPointX() * dm.widthPixels
+        val y = prefs.getPointY() * dm.heightPixels
+
+        val path = Path().apply { moveTo(x, y) }
+        val duration = prefs.getClickLength().toLong().coerceAtLeast(1L)
+
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0, duration))
             .build()
 
-        dispatchGesture(g,null,null)
+        dispatchGesture(gesture, null, null)
     }
 }
