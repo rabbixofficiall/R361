@@ -2,9 +2,13 @@
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
 
-    <application android:label="R361">
+    <application
+        android:label="R361"
+        android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
 
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -13,7 +17,8 @@
 
         <service
             android:name=".AutoTapAccessibilityService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
 
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService"/>
