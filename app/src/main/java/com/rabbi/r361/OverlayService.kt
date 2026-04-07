@@ -21,8 +21,8 @@ class OverlayService : Service() {
     private var rootView: FrameLayout? = null
     private var markerView: View? = null
 
-    private var lastX = 0f
-    private var lastY = 0f
+    private var lastX = -1f
+    private var lastY = -1f
 
     override fun onCreate() {
         super.onCreate()
@@ -40,7 +40,7 @@ class OverlayService : Service() {
             visibility = View.GONE
         }
 
-        val markerParams = FrameLayout.LayoutParams(24, 24)
+        val markerParams = FrameLayout.LayoutParams(28, 28)
         root.addView(marker, markerParams)
         markerView = marker
 
@@ -48,12 +48,18 @@ class OverlayService : Service() {
             text = "✓"
             textSize = 28f
             setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#AA00AA00"))
+            setBackgroundColor(Color.parseColor("#CC00AA00"))
             setPadding(35, 20, 35, 20)
             setOnClickListener {
+                if (lastX < 0 || lastY < 0) {
+                    Toast.makeText(this@OverlayService, "Tap screen first to set point", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
                 val dm = resources.displayMetrics
                 val xRatio = (lastX / dm.widthPixels).coerceIn(0f, 1f)
                 val yRatio = (lastY / dm.heightPixels).coerceIn(0f, 1f)
+
                 prefs.setPoint(xRatio, yRatio)
                 Toast.makeText(this@OverlayService, "Point saved", Toast.LENGTH_SHORT).show()
                 stopSelf()
@@ -64,45 +70,46 @@ class OverlayService : Service() {
             text = "✕"
             textSize = 24f
             setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#AA990000"))
+            setBackgroundColor(Color.parseColor("#CC990000"))
             setPadding(35, 20, 35, 20)
-            setOnClickListener {
-                stopSelf()
-            }
+            setOnClickListener { stopSelf() }
         }
 
         val confirmLp = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
             FrameLayout.LayoutParams.WRAP_CONTENT
-        )
-        confirmLp.gravity = Gravity.TOP or Gravity.END
-        confirmLp.topMargin = 80
-        confirmLp.marginEnd = 40
+        ).apply {
+            gravity = Gravity.TOP or Gravity.END
+            topMargin = 80
+            marginEnd = 40
+        }
 
         val cancelLp = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
             FrameLayout.LayoutParams.WRAP_CONTENT
-        )
-        cancelLp.gravity = Gravity.TOP or Gravity.START
-        cancelLp.topMargin = 80
-        cancelLp.marginStart = 40
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            topMargin = 80
+            marginStart = 40
+        }
 
         root.addView(confirm, confirmLp)
         root.addView(cancel, cancelLp)
 
         root.setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_DOWN || event.action == MotionEvent.ACTION_MOVE) {
-                lastX = event.rawX
-                lastY = event.rawY
+            when (event.action) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP -> {
+                    lastX = event.rawX
+                    lastY = event.rawY
 
-                val lp = markerView?.layoutParams as FrameLayout.LayoutParams
-                lp.leftMargin = (lastX - 12).toInt()
-                lp.topMargin = (lastY - 12).toInt()
-                markerView?.layoutParams = lp
-                markerView?.visibility = View.VISIBLE
-                true
-            } else {
-                false
+                    val lp = markerView?.layoutParams as FrameLayout.LayoutParams
+                    lp.leftMargin = (lastX - 14).toInt()
+                    lp.topMargin = (lastY - 14).toInt()
+                    markerView?.layoutParams = lp
+                    markerView?.visibility = View.VISIBLE
+                    true
+                }
+                else -> false
             }
         }
 
@@ -116,7 +123,8 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             type,
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         )
 
