@@ -14,13 +14,23 @@ class AutoTapAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
 
     private var isRunning = false
-    private var isTargetActive = false
     private var currentPackage: String? = null
     private var remainingClicks = 0
 
     private val loop = object : Runnable {
         override fun run() {
-            if (!isRunning || !isTargetActive) return
+            if (!isRunning) return
+
+            val pkg = currentPackage
+            if (pkg == null || pkg == packageName) {
+                stopLoop()
+                return
+            }
+
+            if (!prefs.hasPoint()) {
+                stopLoop()
+                return
+            }
 
             tap()
 
@@ -41,7 +51,6 @@ class AutoTapAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         prefs = PrefsManager(this)
         isRunning = false
-        isTargetActive = false
         currentPackage = null
         handler.removeCallbacks(loop)
     }
@@ -50,10 +59,7 @@ class AutoTapAccessibilityService : AccessibilityService() {
         val pkg = event?.packageName?.toString() ?: return
         currentPackage = pkg
 
-        val selected = prefs.getSelectedPackage()
-        isTargetActive = !selected.isNullOrBlank() && pkg == selected
-
-        if (!isTargetActive && isRunning) {
+        if (pkg == packageName && isRunning) {
             stopLoop()
         }
     }
@@ -67,19 +73,25 @@ class AutoTapAccessibilityService : AccessibilityService() {
             return false
         }
 
-        if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-            if (isTargetActive && prefs.hasPoint()) {
-                if (isRunning) stopLoop() else startLoop()
-                return true
+        return when (event.keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                if (prefs.hasPoint() && currentPackage != null && currentPackage != packageName) {
+                    if (isRunning) stopLoop() else startLoop()
+                    true
+                } else {
+                    false
+                }
             }
-        }
 
-        return false
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                false
+            }
+
+            else -> false
+        }
     }
 
     private fun startLoop() {
-        if (!prefs.hasPoint()) return
-
         remainingClicks = prefs.getClickCount()
         isRunning = true
         handler.removeCallbacks(loop)
