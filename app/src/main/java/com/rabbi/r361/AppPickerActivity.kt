@@ -3,7 +3,10 @@ package com.rabbi.r361
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import android.widget.ListView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -13,8 +16,15 @@ class AppPickerActivity : AppCompatActivity() {
 
     private lateinit var prefs: PrefsManager
     private lateinit var listView: ListView
-    private val appNames = mutableListOf<String>()
-    private val appPackages = mutableListOf<String>()
+    private lateinit var searchBox: EditText
+
+    private val allAppNames = mutableListOf<String>()
+    private val allAppPackages = mutableListOf<String>()
+
+    private val filteredNames = mutableListOf<String>()
+    private val filteredPackages = mutableListOf<String>()
+
+    private lateinit var adapter: ArrayAdapter<String>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,7 +32,27 @@ class AppPickerActivity : AppCompatActivity() {
 
         prefs = PrefsManager(this)
         listView = findViewById(R.id.listApps)
+        searchBox = findViewById(R.id.searchApps)
 
+        loadApps()
+        setupSearch()
+
+        listView.setOnItemClickListener { _, _, position, _ ->
+            prefs.setSelectedAppName(filteredNames[position])
+            prefs.setSelectedPackage(filteredPackages[position])
+
+            AlertDialog.Builder(this)
+                .setTitle("App selected")
+                .setMessage("Warning: For better trigger accuracy, use the selected app in landscape mode.")
+                .setPositiveButton("OK") { _, _ ->
+                    Toast.makeText(this, "Selected: ${filteredNames[position]}", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+                .show()
+        }
+    }
+
+    private fun loadApps() {
         val pm = packageManager
 
         val installedApps = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -36,26 +66,54 @@ class AppPickerActivity : AppCompatActivity() {
             .filter { it.packageName != packageName }
             .sortedBy { pm.getApplicationLabel(it).toString().lowercase() }
 
+        allAppNames.clear()
+        allAppPackages.clear()
+
         for (app in sortedApps) {
             val label = pm.getApplicationLabel(app).toString()
-            appNames.add(label)
-            appPackages.add(app.packageName)
+            allAppNames.add(label)
+            allAppPackages.add(app.packageName)
         }
 
-        listView.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, appNames)
+        filteredNames.clear()
+        filteredPackages.clear()
+        filteredNames.addAll(allAppNames)
+        filteredPackages.addAll(allAppPackages)
 
-        listView.setOnItemClickListener { _, _, position, _ ->
-            prefs.setSelectedAppName(appNames[position])
-            prefs.setSelectedPackage(appPackages[position])
+        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, filteredNames)
+        listView.adapter = adapter
+    }
 
-            AlertDialog.Builder(this)
-                .setTitle("App selected")
-                .setMessage("Warning: For better trigger accuracy, use the selected app in landscape mode.")
-                .setPositiveButton("OK") { _, _ ->
-                    Toast.makeText(this, "Selected: ${appNames[position]}", Toast.LENGTH_SHORT).show()
-                    finish()
+    private fun setupSearch() {
+        searchBox.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                filterApps(s?.toString().orEmpty())
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+    }
+
+    private fun filterApps(query: String) {
+        val q = query.trim().lowercase()
+
+        filteredNames.clear()
+        filteredPackages.clear()
+
+        if (q.isEmpty()) {
+            filteredNames.addAll(allAppNames)
+            filteredPackages.addAll(allAppPackages)
+        } else {
+            for (i in allAppNames.indices) {
+                val name = allAppNames[i]
+                val pkg = allAppPackages[i]
+                if (name.lowercase().contains(q) || pkg.lowercase().contains(q)) {
+                    filteredNames.add(name)
+                    filteredPackages.add(pkg)
                 }
-                .show()
+            }
         }
+
+        adapter.notifyDataSetChanged()
     }
 }
