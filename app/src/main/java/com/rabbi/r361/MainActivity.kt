@@ -36,108 +36,114 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        try {
-            prefs = PrefsManager(this)
-            profileManager = ProfileManager(this)
+        prefs = PrefsManager(this)
+        profileManager = ProfileManager(this)
 
-            txtSelectedApp = findViewById(R.id.txtSelectedApp)
-            txtPointStatus = findViewById(R.id.txtPointStatus)
-            txtSpeedValue = findViewById(R.id.txtSpeedValue)
-            txtOverlayStatus = findViewById(R.id.txtOverlayStatus)
-            txtAccessibilityStatus = findViewById(R.id.txtAccessibilityStatus)
-            txtCurrentProfile = findViewById(R.id.txtCurrentProfile)
-            seekSpeed = findViewById(R.id.seekSpeed)
-            inputClickCount = findViewById(R.id.inputClickCount)
-            inputClickLength = findViewById(R.id.inputClickLength)
-            spinnerProfiles = findViewById(R.id.spinnerProfiles)
+        txtSelectedApp = findViewById(R.id.txtSelectedApp)
+        txtPointStatus = findViewById(R.id.txtPointStatus)
+        txtSpeedValue = findViewById(R.id.txtSpeedValue)
+        txtOverlayStatus = findViewById(R.id.txtOverlayStatus)
+        txtAccessibilityStatus = findViewById(R.id.txtAccessibilityStatus)
+        txtCurrentProfile = findViewById(R.id.txtCurrentProfile)
+        seekSpeed = findViewById(R.id.seekSpeed)
+        inputClickCount = findViewById(R.id.inputClickCount)
+        inputClickLength = findViewById(R.id.inputClickLength)
+        spinnerProfiles = findViewById(R.id.spinnerProfiles)
 
-            setupProfiles()
+        setupProfiles()
 
-            findViewById<Button>(R.id.btnAddProfile).setOnClickListener {
-                showAddProfileDialog()
-            }
-
-            findViewById<Button>(R.id.btnDeleteProfile).setOnClickListener {
-                val current = profileManager.getCurrentProfile()
-                if (profileManager.deleteProfile(current)) {
-                    toast("Profile deleted")
-                    setupProfiles()
-                    refreshUi()
-                } else {
-                    toast("Cannot delete Default profile")
-                }
-            }
-
-            findViewById<Button>(R.id.btnApps).setOnClickListener {
-                startActivity(Intent(this, AppPickerActivity::class.java))
-            }
-
-            findViewById<Button>(R.id.btnSettings).setOnClickListener {
-                startActivity(Intent(this, SettingsActivity::class.java))
-            }
-
-            findViewById<Button>(R.id.btnAbout).setOnClickListener {
-                startActivity(Intent(this, AboutActivity::class.java))
-            }
-
-            findViewById<Button>(R.id.btnSaveSensitivity).setOnClickListener {
-                val clickCount = inputClickCount.text.toString().trim().toIntOrNull() ?: 0
-                val clickLength = inputClickLength.text.toString().trim().toIntOrNull() ?: 50
-                prefs.setClickCount(clickCount.coerceAtLeast(0))
-                prefs.setClickLength(clickLength.coerceAtLeast(1))
-                toast("Sensitivity saved")
-            }
-
-            findViewById<Button>(R.id.btnSetPoint).setOnClickListener {
-                if (!Settings.canDrawOverlays(this)) {
-                    openOverlaySettings()
-                    return@setOnClickListener
-                }
-
-                if (!isAccessibilityEnabled()) {
-                    openAccessibilitySettings()
-                    return@setOnClickListener
-                }
-
-                startService(Intent(this, OverlayService::class.java))
-                toast("Open target app, tap screen, then press ✓")
-            }
-
-            seekSpeed.max = 1000
-            seekSpeed.progress = prefs.getSpeedMs().coerceAtLeast(1)
-            txtSpeedValue.text = prefs.getSpeedMs().toString()
-
-            seekSpeed.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    val safe = progress.coerceAtLeast(1)
-                    prefs.setSpeedMs(safe)
-                    txtSpeedValue.text = safe.toString()
-                }
-
-                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-            })
-
-            inputClickCount.setText(prefs.getClickCount().toString())
-            inputClickLength.setText(prefs.getClickLength().toString())
-
-            if (!Settings.canDrawOverlays(this) || !isAccessibilityEnabled()) {
-                toast("Enable Overlay and Accessibility permissions")
-            }
-
-            refreshUi()
-
-        } catch (e: Exception) {
-            Toast.makeText(this, "Startup error: ${e.message}", Toast.LENGTH_LONG).show()
+        findViewById<Button>(R.id.btnAddProfile).setOnClickListener {
+            showAddProfileDialog()
         }
+
+        findViewById<Button>(R.id.btnDeleteProfile).setOnClickListener {
+            val current = profileManager.getCurrentProfile()
+            if (profileManager.deleteProfile(current)) {
+                toast("Profile deleted")
+                setupProfiles()
+                refreshUi()
+            } else {
+                toast("Cannot delete Default profile")
+            }
+        }
+
+        findViewById<Button>(R.id.btnApps).setOnClickListener {
+            startActivity(Intent(this, AppPickerActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btnSettings).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btnAbout).setOnClickListener {
+            startActivity(Intent(this, AboutActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btnSaveSensitivity).setOnClickListener {
+            val clickCount = inputClickCount.text.toString().trim().toIntOrNull() ?: 0
+            val clickLength = inputClickLength.text.toString().trim().toIntOrNull() ?: 50
+            prefs.setClickCount(clickCount.coerceAtLeast(0))
+            prefs.setClickLength(clickLength.coerceAtLeast(1))
+            toast("Sensitivity saved")
+        }
+
+        findViewById<Button>(R.id.btnSetPoint).setOnClickListener {
+            val selectedPkg = prefs.getSelectedPackage()
+
+            if (selectedPkg.isNullOrBlank()) {
+                toast("Select an app first")
+                return@setOnClickListener
+            }
+
+            if (!Settings.canDrawOverlays(this)) {
+                openOverlaySettings()
+                return@setOnClickListener
+            }
+
+            if (!isAccessibilityEnabled()) {
+                openAccessibilitySettings()
+                return@setOnClickListener
+            }
+
+            val launchIntent = packageManager.getLaunchIntentForPackage(selectedPkg)
+            if (launchIntent == null) {
+                toast("Could not open selected app")
+                return@setOnClickListener
+            }
+
+            startService(Intent(this, OverlayService::class.java))
+            startActivity(launchIntent)
+            toast("Selected app opened. Tap screen to choose point, then press ✓")
+        }
+
+        seekSpeed.max = 1000
+        seekSpeed.progress = prefs.getSpeedMs().coerceAtLeast(1)
+        txtSpeedValue.text = prefs.getSpeedMs().toString()
+
+        seekSpeed.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val safe = progress.coerceAtLeast(1)
+                prefs.setSpeedMs(safe)
+                txtSpeedValue.text = safe.toString()
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        inputClickCount.setText(prefs.getClickCount().toString())
+        inputClickLength.setText(prefs.getClickLength().toString())
+
+        if (!Settings.canDrawOverlays(this) || !isAccessibilityEnabled()) {
+            toast("Enable Overlay and Accessibility permissions")
+        }
+
+        refreshUi()
     }
 
     override fun onResume() {
         super.onResume()
-        try {
-            refreshUi()
-        } catch (_: Exception) {
-        }
+        refreshUi()
     }
 
     private fun setupProfiles() {
