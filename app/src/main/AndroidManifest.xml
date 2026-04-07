@@ -13,7 +13,7 @@
         android:theme="@style/Theme.R361">
 
         <activity
-            android:name=".SplashActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:screenOrientation="portrait">
             <intent-filter>
@@ -23,12 +23,12 @@
         </activity>
 
         <activity
-            android:name=".SetupActivity"
+            android:name=".SplashActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".SetupActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
