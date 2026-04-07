@@ -1,6 +1,5 @@
 package com.rabbi.r361
 
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
