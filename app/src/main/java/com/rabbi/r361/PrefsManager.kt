@@ -12,12 +12,16 @@ class PrefsManager(context: Context) {
     fun getSelectedAppName(): String? = pref.getString("selected_app_name", "No app selected")
 
     fun setPoint(xRatio: Float, yRatio: Float) {
-        pref.edit().putFloat("point_x", xRatio).putFloat("point_y", yRatio).apply()
+        pref.edit()
+            .putFloat("point_x", xRatio)
+            .putFloat("point_y", yRatio)
+            .putBoolean("has_point", true)
+            .apply()
     }
 
     fun getPointX(): Float = pref.getFloat("point_x", 0.5f)
     fun getPointY(): Float = pref.getFloat("point_y", 0.5f)
-    fun hasPoint(): Boolean = pref.contains("point_x") && pref.contains("point_y")
+    fun hasPoint(): Boolean = pref.getBoolean("has_point", false)
 
     fun setSpeedMs(value: Int) = pref.edit().putInt("speed_ms", value).apply()
     fun getSpeedMs(): Int = pref.getInt("speed_ms", 50)
