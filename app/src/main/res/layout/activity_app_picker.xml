@@ -18,14 +18,25 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:text="Warning: use selected app in landscape mode for better trigger accuracy."
-        android:textColor="@color/warning"
+        android:textColor="@color/accent"
         android:textSize="13sp" />
+
+    <EditText
+        android:id="@+id/searchApps"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:hint="Search apps..."
+        android:inputType="text"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_secondary"
+        android:backgroundTint="@color/accent" />
 
     <ListView
         android:id="@+id/listApps"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="14dp"
         android:divider="@android:color/transparent"
         android:dividerHeight="8dp" />
 </LinearLayout>
