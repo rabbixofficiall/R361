@@ -64,12 +64,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btnSetPoint).setOnClickListener {
-            val pkg = prefs.getSelectedPackage()
-            if (pkg.isNullOrBlank()) {
-                toast("Select an app first")
-                return@setOnClickListener
-            }
-
             if (!Settings.canDrawOverlays(this)) {
                 openOverlaySettings()
                 return@setOnClickListener
@@ -81,13 +75,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             startService(Intent(this, OverlayService::class.java))
-            val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
-            if (launchIntent != null) {
-                startActivity(launchIntent)
-                toast("Target app opened. Tap screen to set point, then press ✓")
-            } else {
-                toast("Could not open selected app")
-            }
+            toast("Open any target app, tap screen to set point, then press ✓")
         }
 
         seekSpeed.max = 1000
@@ -111,6 +99,13 @@ class MainActivity : AppCompatActivity() {
         if (!Settings.canDrawOverlays(this) || !isAccessibilityEnabled()) {
             toast("Enable Overlay and Accessibility permissions")
         }
+
+        val currentVersionCode = packageManager
+            .getPackageInfo(packageName, 0)
+            .longVersionCode
+            .toInt()
+
+        UpdateChecker(this).checkForUpdate(currentVersionCode)
     }
 
     override fun onResume() {
